@@ -349,13 +349,18 @@
             border-radius: 6px;
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            line-height: 1.6;
+            line-height: 1.8;
             color: var(--gray-900);
             white-space: pre-wrap;
             word-wrap: break-word;
             max-height: 400px;
             overflow-y: auto;
             border: 1px solid var(--gray-300);
+        }
+
+        .preview-content strong {
+            font-weight: 700;
+            color: var(--gray-900);
         }
 
         .toast {
@@ -792,56 +797,106 @@
             const tipo = appState.tipoSelecionado;
             const dados = appState.dados;
             let documento = '';
+            let documentoHtml = '';
 
             const separador = '═'.repeat(50);
             const titulo = tiposDocumento[tipo].titulo.split(' ').slice(1).join(' ').toUpperCase();
+
+            const formatarCampo = (label, valor) => {
+                const texto = `${label}: ${valor}`;
+                return {
+                    texto,
+                    html: `<strong>${label}:</strong> ${valor}`
+                };
+            };
 
             // Cabeçalho
             documento += separador + '\n';
             documento += `       MODELO ${titulo}\n`;
             documento += separador + '\n\n';
+            documentoHtml += `${separador}<br>`;
+            documentoHtml += `MODELO <strong>${titulo}</strong><br>`;
+            documentoHtml += `${separador}<br><br>`;
 
             // Mensagem de autorização por tipo
             switch(tipo) {
                 case 'regravacao_chassi':
                     documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,\n';
                     documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,<br>';
+                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
                     break;
                 case 'regravacao_motor':
                     documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,\n';
                     documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,<br>';
+                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
                     break;
                 case 'dapi':
                     documento += 'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL\n';
                     documento += 'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL<br>';
+                    documentoHtml += 'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO<br><br>';
                     break;
                 case 'classificacao_motor':
                     documento += 'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,\n';
                     documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,<br>';
+                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
                     break;
             }
 
             // Campos específicos no topo (ordenados conforme modelo original)
+            let motorField = null;
+            let chassiField = null;
+
             if (tipo === 'regravacao_motor' || tipo === 'dapi' || tipo === 'classificacao_motor') {
-                documento += `N° DO MOTOR: ${dados.motor}\n`;
+                motorField = formatarCampo('N° DO MOTOR', dados.motor);
+                documento += `${motorField.texto}\n`;
+                documentoHtml += `${motorField.html}<br>`;
             } else {
-                documento += `CHASSI: ${dados.chassi}\n`;
+                chassiField = formatarCampo('CHASSI', dados.chassi);
+                documento += `${chassiField.texto}\n`;
+                documentoHtml += `${chassiField.html}<br>`;
             }
 
-            documento += `PLACA: ${dados.placa}\n`;
-            
+            const placa = formatarCampo('PLACA', dados.placa);
+            documento += `${placa.texto}\n`;
+            documentoHtml += `${placa.html}<br>`;
+
             if (tipo !== 'regravacao_chassi') {
-                documento += `CHASSI: ${dados.chassi}\n`;
+                const chassi = formatarCampo('CHASSI', dados.chassi);
+                documento += `${chassi.texto}\n`;
+                documentoHtml += `${chassi.html}<br>`;
             } else {
-                documento += `N° DO MOTOR: ${dados.motor}\n`;
+                const motor = formatarCampo('N° DO MOTOR', dados.motor);
+                documento += `${motor.texto}\n`;
+                documentoHtml += `${motor.html}<br>`;
             }
 
-            documento += `RENAVAM: ${dados.renavam}\n`;
-            documento += `ANO/MODELO: ${dados.ano_modelo}\n`;
-            documento += `COR: ${dados.cor}\n`;
-            documento += `MARCA/MODELO: ${dados.marca_modelo}\n`;
-            documento += `ESPÉCIE: ${dados.especie}\n`;
-            documento += `PROPRIETÁRIO: ${dados.proprietario}\n`;
+            const renavam = formatarCampo('RENAVAM', dados.renavam);
+            documento += `${renavam.texto}\n`;
+            documentoHtml += `${renavam.html}<br>`;
+
+            const anoModelo = formatarCampo('ANO/MODELO', dados.ano_modelo);
+            documento += `${anoModelo.texto}\n`;
+            documentoHtml += `${anoModelo.html}<br>`;
+
+            const cor = formatarCampo('COR', dados.cor);
+            documento += `${cor.texto}\n`;
+            documentoHtml += `${cor.html}<br>`;
+
+            const marcaModelo = formatarCampo('MARCA/MODELO', dados.marca_modelo);
+            documento += `${marcaModelo.texto}\n`;
+            documentoHtml += `${marcaModelo.html}<br>`;
+
+            const especie = formatarCampo('ESPÉCIE', dados.especie);
+            documento += `${especie.texto}\n`;
+            documentoHtml += `${especie.html}<br>`;
+
+            const proprietario = formatarCampo('PROPRIETÁRIO', dados.proprietario);
+            documento += `${proprietario.texto}\n`;
+            documentoHtml += `${proprietario.html}<br>`;
 
             // Rodapé
             documento += '\n' + separador + '\n\n';
@@ -850,8 +905,14 @@
             documento += '\n' + separador + '\n';
             documento += `Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}\n`;
 
+            documentoHtml += '<br>' + separador + '<br><br>';
+            documentoHtml += 'José Genilson Sobrinho<br>';
+            documentoHtml += 'Diretor de Registro e Licenciamento - DETRAN-PI<br>';
+            documentoHtml += '<br>' + separador + '<br>';
+            documentoHtml += `Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+
             appState.documento = documento;
-            document.getElementById('previewContent').textContent = documento;
+            document.getElementById('previewContent').innerHTML = documentoHtml;
             salvarDados();
         }
 
