@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Autorizações Veiculares</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1e3a8a;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--gray-900);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 40px 30px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .progress-step {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            background: white;
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .progress-step.completed {
+            background: var(--success);
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--primary-light);
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        .required {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+
+        select, input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        select:invalid, input:invalid {
+            border-color: var(--danger);
+        }
+
+        select.error, input.error {
+            border-color: var(--danger);
+            background: rgba(220, 38, 38, 0.05);
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .error-message {
+            font-size: 12px;
+            color: var(--danger);
+            margin-top: 4px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .tipo-card {
+            padding: 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .tipo-card:hover {
+            border-color: var(--primary-light);
+            background: var(--gray-100);
+        }
+
+        .tipo-card.selected {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .tipo-card input[type="radio"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .tipo-card label {
+            cursor: pointer;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .tipo-descricao {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-left: 24px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-900);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-copy {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .btn-copy:hover {
+            background: #2563eb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-section {
+            background: var(--gray-100);
+            border: 2px dashed var(--gray-300);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-title {
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .preview-content {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--gray-900);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-300);
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 6px;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .icon {
+            font-size: 18px;
+        }
+
+        .ikon-tipo {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .content {
+                padding: 25px 20px;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .btn-primary {
+                width: 100%;
+            }
+
+            .progress-bar {
+                gap: 5px;
+            }
+
+            .progress-step {
+                width: 35px;
+                height: 35px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            .section-title {
+                font-size: 16px;
+            }
+        }
+
+        .form-info {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid var(--primary-light);
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--gray-700);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Gerador de Autorizações Veiculares</h1>
+            <p>Sistema de geração automática de documentos DETRAN-PI</p>
+            <div class="progress-bar">
+                <div class="progress-step active" data-step="1">1</div>
+                <div class="progress-step" data-step="2">2</div>
+                <div class="progress-step" data-step="3">3</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- ETAPA 1: SELEÇÃO DE TIPO -->
+            <div class="form-section active" data-section="1">
+                <h2 class="section-title">Selecione o Tipo de Autorização</h2>
+                
+                <div class="form-info">
+                    💡 Escolha o tipo de documento que deseja gerar. Campos específicos serão exibidos na próxima etapa.
+                </div>
+
+                <div id="tiposContainer"></div>
+
+                <div class="buttons">
+                    <button class="btn-primary" id="btnProxima1" onclick="proximaEtapa()">
+                        <span>Próximo</span>
+                        <span class="icon">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ETAPA 2: PREENCHIMENTO DE DADOS -->
+            <div class="form-section" data-section="2">
+                <h2 class="section-title">Preencha os Dados do Veículo</h2>
+                
+                <form id="formDados" onsubmit="event.preventDefault(); gerarDocumento();">
+                    <div id="camposContainer"></div>
+
+                    <div class="buttons">
+                        <button type="button" class="btn-secondary" onclick="etapaAnterior()">
+                            <span class="icon">←</span>
+                            <span>Voltar</span>
+                        </button>
+                        <button type="button" class="btn-primary" onclick="validarEAvançar()">
+                            <span>Gerar Documento</span>
+                            <span class="icon">→</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ETAPA 3: PREVIEW E DOWNLOAD -->
+            <div class="form-section" data-section="3">
+                <h2 class="section-title">Documento Gerado com Sucesso</h2>
+                
+                <div class="form-info">
+                    ✅ Seu documento está pronto. Escolha como deseja utilizá-lo.
+                </div>
+
+                <div class="preview-section show">
+                    <div class="preview-title">Pré-visualização do Documento:</div>
+                    <div class="preview-content" id="previewContent"></div>
+                </div>
+
+                <div class="buttons">
+                    <button class="btn-secondary" onclick="etapaAnterior()">
+                        <span class="icon">←</span>
+                        <span>Editar</span>
+                    </button>
+                    <button class="btn-copy" onclick="copiarParaClipboard()">
+                        <span class="icon">📋</span>
+                        <span>Copiar Texto</span>
+                    </button>
+                    <button class="btn-success" onclick="baixarArquivo()">
+                        <span class="icon">⬇️</span>
+                        <span>Baixar .TXT</span>
+                    </button>
+                </div>
+
+                <div class="buttons" style="margin-top: 20px;">
+                    <button class="btn-primary" onclick="recomecar()" style="flex: 1; background: var(--primary);">
+                        <span class="icon">🔄</span>
+                        <span>Gerar Novo Documento</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DADOS DE CONFIGURAÇÃO
+        const tiposDocumento = {
+            regravacao_chassi: {
+                titulo: '📋 Regravação de Chassi',
+                descricao: 'Autoriza a regravação do número de chassi',
+                campos: ['chassi', 'placa', 'renavam', 'motor', 'marca_modelo', 'ano_modelo', 'especie', 'cor', 'proprietario']
+            },
+            regravacao_motor: {
+                titulo: '🔧 Regravação de Motor',
+                descricao: 'Autoriza a regravação do número de motor',
+                campos: ['motor', 'placa', 'chassi', 'renavam', 'ano_modelo', 'cor', 'marca_modelo', 'especie', 'proprietario']
+            },
+            dapi: {
+                titulo: '⚙️ Autorização DAPI',
+                descricao: 'Insere o diferencial DAPI no final do número de motor',
+                campos: ['motor', 'placa', 'chassi', 'renavam', 'ano_modelo', 'cor', 'marca_modelo', 'especie', 'proprietario']
+            },
+            classificacao_motor: {
+                titulo: '✅ Classificação de Motor',
+                descricao: 'Grava o número de motor do veículo',
+                campos: ['motor', 'placa', 'chassi', 'renavam', 'ano_modelo', 'cor', 'marca_modelo', 'especie', 'proprietario']
+            }
+        };
+
+        const configCampos = {
+            chassi: {
+                label: 'Chassi',
+                placeholder: '9BFZK53A2AB188230',
+                tipo: 'text',
+                maxlength: 17,
+                validacao: /^[A-Z0-9]{17}$/,
+                mensagem: 'Chassi deve ter 17 caracteres alfanuméricos'
+            },
+            placa: {
+                label: 'Placa',
+                placeholder: 'ABC1234, ABC-1234 ou ABC1D23',
+                tipo: 'text',
+                maxlength: 8,
+                validacao: /^(?:[A-Z]{3}-?[0-9]{4}|[A-Z]{3}-?[0-9][A-Z][0-9]{2}|[0-9]{5}[A-Z]{2})$/,
+                mensagem: 'Placa inválida (ex: ABC1234, ABC-1234 ou ABC1D23)'
+            },
+            renavam: {
+                label: 'Renavam',
+                placeholder: '00205101402',
+                tipo: 'text',
+                maxlength: 11,
+                validacao: /^[0-9]{11}$/,
+                mensagem: 'Renavam deve conter 11 dígitos'
+            },
+            motor: {
+                label: 'Número do Motor',
+                placeholder: '37794010358010',
+                tipo: 'text',
+                maxlength: 20,
+                validacao: /^[A-Z0-9]{8,20}$/,
+                mensagem: 'Motor deve ter entre 8 e 20 caracteres'
+            },
+            marca_modelo: {
+                label: 'Marca/Modelo',
+                placeholder: 'FORD/KA FLEX',
+                tipo: 'text',
+                validacao: /.+/,
+                mensagem: 'Preenchimento obrigatório'
+            },
+            ano_modelo: {
+                label: 'Ano/Modelo',
+                placeholder: '2010/2010',
+                tipo: 'text',
+                validacao: /^\d{4}\/\d{4}$/,
+                mensagem: 'Formato: AAAA/AAAA (ex: 2010/2010)'
+            },
+            proprietario: {
+                label: 'Proprietário',
+                placeholder: 'Nome do proprietário',
+                tipo: 'text',
+                validacao: /.+/,
+                mensagem: 'Preenchimento obrigatório'
+            },
+            especie: {
+                label: 'Espécie',
+                placeholder: 'AUTOMÓVEL',
+                tipo: 'text',
+                validacao: /.+/,
+                mensagem: 'Preenchimento obrigatório'
+            },
+            cor: {
+                label: 'Cor',
+                placeholder: 'VERMELHA',
+                tipo: 'text',
+                validacao: /.+/,
+                mensagem: 'Preenchimento obrigatório'
+            }
+        };
+
+        // ESTADO DA APLICAÇÃO
+        let appState = {
+            etapaAtual: 1,
+            tipoSelecionado: null,
+            dados: {}
+        };
+
+        // FUNÇÃO: INICIALIZAR
+        function inicializar() {
+            renderizarTipos();
+            carregarDados();
+        }
+
+        // FUNÇÃO: RENDERIZAR TIPOS DE DOCUMENTO
+        function renderizarTipos() {
+            const container = document.getElementById('tiposContainer');
+            container.innerHTML = '';
+
+            Object.entries(tiposDocumento).forEach(([key, config]) => {
+                const div = document.createElement('div');
+                div.className = `tipo-card ${appState.tipoSelecionado === key ? 'selected' : ''}`;
+                div.innerHTML = `
+                    <label>
+                        <input type="radio" name="tipo" value="${key}" 
+                            ${appState.tipoSelecionado === key ? 'checked' : ''}
+                            onchange="selecionarTipo('${key}')">
+                        <span class="ikon-tipo">${config.titulo.split(' ')[0]}</span>
+                        <strong>${config.titulo}</strong>
+                    </label>
+                    <div class="tipo-descricao">${config.descricao}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // FUNÇÃO: SELECIONAR TIPO
+        function selecionarTipo(tipo) {
+            appState.tipoSelecionado = tipo;
+            salvarDados();
+            renderizarTipos();
+            document.getElementById('btnProxima1').disabled = false;
+        }
+
+        // FUNÇÃO: RENDERIZAR CAMPOS DINÂMICOS
+        function renderizarCampos() {
+            const container = document.getElementById('camposContainer');
+            container.innerHTML = '';
+
+            if (!appState.tipoSelecionado) return;
+
+            const campos = tiposDocumento[appState.tipoSelecionado].campos;
+            let colCount = 1;
+
+            // Inicia grid se houver múltiplos campos
+            if (campos.length > 3) {
+                container.style.display = 'grid';
+                container.style.gridTemplateColumns = '1fr 1fr';
+                container.style.gap = '20px';
+            }
+
+            campos.forEach(campoKey => {
+                const config = configCampos[campoKey];
+                const valor = appState.dados[campoKey] || '';
+
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.style.gridColumn = campos.length === 3 && colCount === 3 ? '1 / -1' : 'auto';
+
+                div.innerHTML = `
+                    <label for="${campoKey}">
+                        ${config.label}
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="${config.tipo}" 
+                        id="${campoKey}" 
+                        name="${campoKey}"
+                        placeholder="${config.placeholder}"
+                        value="${valor}"
+                        maxlength="${config.maxlength || ''}"
+                        onchange="atualizarDado('${campoKey}')"
+                        oninput="atualizarDado('${campoKey}')"
+                    >
+                    <div class="error-message" id="erro-${campoKey}"></div>
+                    <div class="helper-text">${config.mensagem}</div>
+                `;
+
+                container.appendChild(div);
+                colCount++;
+            });
+        }
+
+        // FUNÇÃO: ATUALIZAR DADO
+        function atualizarDado(campo) {
+            const valor = document.getElementById(campo).value;
+            appState.dados[campo] = valor;
+            salvarDados();
+        }
+
+        // FUNÇÃO: VALIDAR CAMPOS
+        function validarCampos() {
+            const campos = tiposDocumento[appState.tipoSelecionado].campos;
+            let valido = true;
+
+            campos.forEach(campoKey => {
+                const input = document.getElementById(campoKey);
+                const config = configCampos[campoKey];
+                const erroDiv = document.getElementById(`erro-${campoKey}`);
+
+                if (!input.value.trim()) {
+                    input.classList.add('error');
+                    erroDiv.textContent = 'Campo obrigatório';
+                    erroDiv.classList.add('show');
+                    valido = false;
+                } else if (!config.validacao.test(input.value.toUpperCase())) {
+                    input.classList.add('error');
+                    erroDiv.textContent = config.mensagem;
+                    erroDiv.classList.add('show');
+                    valido = false;
+                } else {
+                    input.classList.remove('error');
+                    erroDiv.classList.remove('show');
+                }
+            });
+
+            return valido;
+        }
+
+        // FUNÇÃO: VALIDAR E AVANÇAR
+        function validarEAvançar() {
+            if (validarCampos()) {
+                gerarDocumento();
+                irParaEtapa(3);
+            }
+        }
+
+        // FUNÇÃO: GERAR DOCUMENTO
+        function gerarDocumento() {
+            const tipo = appState.tipoSelecionado;
+            const dados = appState.dados;
+            let documento = '';
+
+            const separador = '═'.repeat(50);
+            const titulo = tiposDocumento[tipo].titulo.split(' ').slice(1).join(' ').toUpperCase();
+
+            // Cabeçalho
+            documento += separador + '\n';
+            documento += `       MODELO ${titulo}\n`;
+            documento += separador + '\n\n';
+
+            // Mensagem de autorização por tipo
+            switch(tipo) {
+                case 'regravacao_chassi':
+                    documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,\n';
+                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    break;
+                case 'regravacao_motor':
+                    documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,\n';
+                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    break;
+                case 'dapi':
+                    documento += 'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL\n';
+                    documento += 'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    break;
+                case 'classificacao_motor':
+                    documento += 'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,\n';
+                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
+                    break;
+            }
+
+            // Campos específicos no topo (ordenados conforme modelo original)
+            if (tipo === 'regravacao_motor' || tipo === 'dapi' || tipo === 'classificacao_motor') {
+                documento += `N° DO MOTOR: ${dados.motor}\n`;
+            } else {
+                documento += `CHASSI: ${dados.chassi}\n`;
+            }
+
+            documento += `PLACA: ${dados.placa}\n`;
+            
+            if (tipo !== 'regravacao_chassi') {
+                documento += `CHASSI: ${dados.chassi}\n`;
+            } else {
+                documento += `N° DO MOTOR: ${dados.motor}\n`;
+            }
+
+            documento += `RENAVAM: ${dados.renavam}\n`;
+            documento += `ANO/MODELO: ${dados.ano_modelo}\n`;
+            documento += `COR: ${dados.cor}\n`;
+            documento += `MARCA/MODELO: ${dados.marca_modelo}\n`;
+            documento += `ESPÉCIE: ${dados.especie}\n`;
+            documento += `PROPRIETÁRIO: ${dados.proprietario}\n`;
+
+            // Rodapé
+            documento += '\n' + separador + '\n\n';
+            documento += 'José Genilson Sobrinho\n';
+            documento += 'Diretor de Registro e Licenciamento - DETRAN-PI\n';
+            documento += '\n' + separador + '\n';
+            documento += `Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}\n`;
+
+            appState.documento = documento;
+            document.getElementById('previewContent').textContent = documento;
+            salvarDados();
+        }
+
+        // FUNÇÃO: COPIAR PARA CLIPBOARD
+        function copiarParaClipboard() {
+            const texto = appState.documento;
+            navigator.clipboard.writeText(texto).then(() => {
+                mostrarToast('✅ Texto copiado para a área de transferência!');
+            }).catch(() => {
+                alert('Erro ao copiar. Tente novamente.');
+            });
+        }
+
+        // FUNÇÃO: BAIXAR ARQUIVO
+        function baixarArquivo() {
+            const elemento = document.createElement('a');
+            elemento.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(appState.documento));
+            elemento.setAttribute('download', `autorizacao_${appState.tipoSelecionado}_${new Date().getTime()}.txt`);
+            elemento.style.display = 'none';
+            document.body.appendChild(elemento);
+            elemento.click();
+            document.body.removeChild(elemento);
+            mostrarToast('✅ Arquivo baixado com sucesso!');
+        }
+
+        // FUNÇÃO: MOSTRAR TOAST
+        function mostrarToast(mensagem) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = mensagem;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // FUNÇÕES DE NAVEGAÇÃO
+        function irParaEtapa(etapa) {
+            // Atualizar seções
+            document.querySelectorAll('.form-section').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(`.form-section[data-section="${etapa}"]`).classList.add('active');
+
+            // Atualizar progresso
+            document.querySelectorAll('.progress-step').forEach(el => {
+                const step = parseInt(el.dataset.step);
+                el.classList.remove('active', 'completed');
+                if (step < etapa) {
+                    el.classList.add('completed');
+                } else if (step === etapa) {
+                    el.classList.add('active');
+                }
+            });
+
+            appState.etapaAtual = etapa;
+            salvarDados();
+
+            // Renderizar campos se estiver na etapa 2
+            if (etapa === 2) {
+                renderizarCampos();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function proximaEtapa() {
+            if (!appState.tipoSelecionado) {
+                alert('Selecione um tipo de autorização');
+                return;
+            }
+            irParaEtapa(2);
+        }
+
+        function etapaAnterior() {
+            if (appState.etapaAtual > 1) {
+                irParaEtapa(appState.etapaAtual - 1);
+            }
+        }
+
+        function recomecar() {
+            appState = {
+                etapaAtual: 1,
+                tipoSelecionado: null,
+                dados: {}
+            };
+            localStorage.removeItem('appState');
+            irParaEtapa(1);
+            renderizarTipos();
+        }
+
+        // FUNÇÕES DE PERSISTÊNCIA
+        function salvarDados() {
+            localStorage.setItem('appState', JSON.stringify(appState));
+        }
+
+        function carregarDados() {
+            const salvo = localStorage.getItem('appState');
+            if (salvo) {
+                appState = JSON.parse(salvo);
+                renderizarTipos();
+            }
+        }
+
+        // INICIALIZAR APLICAÇÃO
+        window.addEventListener('load', inicializar);
+    </script>
+</body>
+</html>
