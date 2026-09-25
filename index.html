@@ -356,6 +356,17 @@
             max-height: 400px;
             overflow-y: auto;
             border: 1px solid var(--gray-300);
+            text-align: left;
+        }
+
+        .preview-content > div {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .preview-content p {
+            margin: 0 0 8px;
         }
 
         .preview-content strong {
@@ -883,7 +894,7 @@
             ].filter(([, valor]) => valor && String(valor).trim() !== '');
 
             let documento = '';
-            let documentoHtml = '';
+            let documentoHtml = '<div style="max-width: 700px; margin: 0 auto; text-align: left;">';
 
             const introducao = textos[tipo] || textos.regravacao_chassi;
             documento += `${introducao[0]}\n${introducao[1]}\n\n`;
@@ -901,6 +912,7 @@
 
             documentoHtml += '<p><br></p>';
             documentoHtml += '<p><strong>José Genilson Sobrinho</strong><br>Diretor de Registro e Licenciamento - DETRAN-PI</p>';
+            documentoHtml += '</div>';
 
             const preview = document.getElementById('previewContent');
             if (preview) {
