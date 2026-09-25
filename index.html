@@ -660,7 +660,9 @@
         let appState = {
             etapaAtual: 1,
             tipoSelecionado: null,
-            dados: {}
+            dados: {},
+            documento: '',
+            documentoHtml: ''
         };
 
         // FUNÇÃO: INICIALIZAR
@@ -709,11 +711,14 @@
             const campos = tiposDocumento[appState.tipoSelecionado].campos;
             let colCount = 1;
 
-            // Inicia grid se houver múltiplos campos
             if (campos.length > 3) {
                 container.style.display = 'grid';
                 container.style.gridTemplateColumns = '1fr 1fr';
                 container.style.gap = '20px';
+            } else {
+                container.style.display = '';
+                container.style.gridTemplateColumns = '';
+                container.style.gap = '';
             }
 
             campos.forEach(campoKey => {
@@ -748,35 +753,83 @@
             });
         }
 
+        function limparErroCampo(campoId) {
+            const input = document.getElementById(campoId);
+            if (!input) return;
+
+            input.classList.remove('error');
+            const erroDiv = document.getElementById(`erro-${campoId}`);
+            if (erroDiv) {
+                erroDiv.textContent = '';
+                erroDiv.classList.remove('show');
+            }
+        }
+
         // FUNÇÃO: ATUALIZAR DADO
         function atualizarDado(campo) {
-            const valor = document.getElementById(campo).value;
+            const input = document.getElementById(campo);
+            if (!input) return;
+
+            const valor = sanitizarValor(input.value);
+            input.value = valor;
             appState.dados[campo] = valor;
+            limparErroCampo(campo);
             salvarDados();
+        }
+
+        function sanitizarValor(valor) {
+            return String(valor ?? '').replace(/<[^>]*>/g, '').trim();
+        }
+
+        function escapeHtml(valor) {
+            return String(valor ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         // FUNÇÃO: VALIDAR CAMPOS
         function validarCampos() {
+            if (!appState.tipoSelecionado) return false;
+
             const campos = tiposDocumento[appState.tipoSelecionado].campos;
             let valido = true;
 
             campos.forEach(campoKey => {
                 const input = document.getElementById(campoKey);
+                if (!input) return;
+
                 const config = configCampos[campoKey];
                 const erroDiv = document.getElementById(`erro-${campoKey}`);
+                const valor = sanitizarValor(input.value);
+                input.value = valor;
+                const valorValido = valor ? config.validacao.test(valor.toUpperCase()) : false;
 
-                if (!input.value.trim()) {
+                if (!valor) {
                     input.classList.add('error');
-                    erroDiv.textContent = 'Campo obrigatório';
-                    erroDiv.classList.add('show');
+                    if (erroDiv) {
+                        erroDiv.textContent = 'Campo obrigatório';
+                        erroDiv.classList.add('show');
+                    }
                     valido = false;
-                } else if (!config.validacao.test(input.value.toUpperCase())) {
+                    return;
+                }
+
+                if (!valorValido) {
                     input.classList.add('error');
-                    erroDiv.textContent = config.mensagem;
-                    erroDiv.classList.add('show');
+                    if (erroDiv) {
+                        erroDiv.textContent = config.mensagem;
+                        erroDiv.classList.add('show');
+                    }
                     valido = false;
-                } else {
-                    input.classList.remove('error');
+                    return;
+                }
+
+                input.classList.remove('error');
+                if (erroDiv) {
+                    erroDiv.textContent = '';
                     erroDiv.classList.remove('show');
                 }
             });
@@ -796,134 +849,138 @@
         function gerarDocumento() {
             const tipo = appState.tipoSelecionado;
             const dados = appState.dados;
+            if (!tipo || !dados) return;
+
+            const textos = {
+                regravacao_chassi: [
+                    'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,',
+                    'COM AS CARACTERÍSTICAS ABAIXO'
+                ],
+                regravacao_motor: [
+                    'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,',
+                    'COM AS CARACTERÍSTICAS ABAIXO'
+                ],
+                dapi: [
+                    'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL',
+                    'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO'
+                ],
+                classificacao_motor: [
+                    'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,',
+                    'COM AS CARACTERÍSTICAS ABAIXO'
+                ]
+            };
+
+            const campos = [
+                ['CHASSI', dados.chassi],
+                ['PLACA', dados.placa],
+                ['N° DO MOTOR', dados.motor],
+                ['RENAVAM', dados.renavam],
+                ['ANO/MODELO', dados.ano_modelo],
+                ['COR', dados.cor],
+                ['MARCA/MODELO', dados.marca_modelo],
+                ['ESPÉCIE', dados.especie],
+                ['PROPRIETÁRIO', dados.proprietario]
+            ].filter(([, valor]) => valor && String(valor).trim() !== '');
+
             let documento = '';
             let documentoHtml = '';
 
-            const separador = '═'.repeat(50);
-            const titulo = tiposDocumento[tipo].titulo.split(' ').slice(1).join(' ').toUpperCase();
+            const introducao = textos[tipo] || textos.regravacao_chassi;
+            documento += `${introducao[0]}\n${introducao[1]}\n\n`;
+            documentoHtml += `<p>${escapeHtml(introducao[0])}</p>`;
+            documentoHtml += `<p>${escapeHtml(introducao[1])}</p>`;
 
-            const formatarCampo = (label, valor) => {
-                const texto = `${label}: ${valor}`;
-                return {
-                    texto,
-                    html: `<strong>${label}:</strong> ${valor}`
-                };
-            };
+            documentoHtml += '<table style="border-collapse: collapse; width: 100%; max-width: 700px; font-family: Arial, sans-serif;">';
+            campos.forEach(([label, valor]) => {
+                documento += `${label}: ${valor}\n`;
+                documentoHtml += `
+                    <tr>
+                        <td style="padding: 4px 10px 4px 0; font-weight: bold; white-space: nowrap; vertical-align: top;">${escapeHtml(label)}:</td>
+                        <td style="padding: 4px 0; vertical-align: top;">${escapeHtml(valor)}</td>
+                    </tr>`;
+            });
+            documentoHtml += '</table>';
+            documento += '\n';
 
-            // Cabeçalho
-            documento += separador + '\n';
-            documento += `       MODELO ${titulo}\n`;
-            documento += separador + '\n\n';
-            documentoHtml += `${separador}<br>`;
-            documentoHtml += `MODELO <strong>${titulo}</strong><br>`;
-            documentoHtml += `${separador}<br><br>`;
-
-            // Mensagem de autorização por tipo
-            switch(tipo) {
-                case 'regravacao_chassi':
-                    documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,\n';
-                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
-                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO CHASSI DO VEÍCULO,<br>';
-                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
-                    break;
-                case 'regravacao_motor':
-                    documento += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,\n';
-                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
-                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A REGRAVAR O Nº DO MOTOR DO VEÍCULO,<br>';
-                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
-                    break;
-                case 'dapi':
-                    documento += 'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL\n';
-                    documento += 'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO\n\n';
-                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A INSERIR O DIFERENCIAL DAPI NO FINAL<br>';
-                    documentoHtml += 'DO Nº DO MOTOR DO VEÍCULO, COM AS CARACTERÍSTICAS ABAIXO<br><br>';
-                    break;
-                case 'classificacao_motor':
-                    documento += 'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,\n';
-                    documento += 'COM AS CARACTERÍSTICAS ABAIXO\n\n';
-                    documentoHtml += 'AUTORIZO A OFICINA CREDENCIADA A GRAVAR O Nº MOTOR DO VEÍCULO,<br>';
-                    documentoHtml += 'COM AS CARACTERÍSTICAS ABAIXO<br><br>';
-                    break;
-            }
-
-            // Campos específicos no topo (ordenados conforme modelo original)
-            let motorField = null;
-            let chassiField = null;
-
-            if (tipo === 'regravacao_motor' || tipo === 'dapi' || tipo === 'classificacao_motor') {
-                motorField = formatarCampo('N° DO MOTOR', dados.motor);
-                documento += `${motorField.texto}\n`;
-                documentoHtml += `${motorField.html}<br>`;
-            } else {
-                chassiField = formatarCampo('CHASSI', dados.chassi);
-                documento += `${chassiField.texto}\n`;
-                documentoHtml += `${chassiField.html}<br>`;
-            }
-
-            const placa = formatarCampo('PLACA', dados.placa);
-            documento += `${placa.texto}\n`;
-            documentoHtml += `${placa.html}<br>`;
-
-            if (tipo !== 'regravacao_chassi') {
-                const chassi = formatarCampo('CHASSI', dados.chassi);
-                documento += `${chassi.texto}\n`;
-                documentoHtml += `${chassi.html}<br>`;
-            } else {
-                const motor = formatarCampo('N° DO MOTOR', dados.motor);
-                documento += `${motor.texto}\n`;
-                documentoHtml += `${motor.html}<br>`;
-            }
-
-            const renavam = formatarCampo('RENAVAM', dados.renavam);
-            documento += `${renavam.texto}\n`;
-            documentoHtml += `${renavam.html}<br>`;
-
-            const anoModelo = formatarCampo('ANO/MODELO', dados.ano_modelo);
-            documento += `${anoModelo.texto}\n`;
-            documentoHtml += `${anoModelo.html}<br>`;
-
-            const cor = formatarCampo('COR', dados.cor);
-            documento += `${cor.texto}\n`;
-            documentoHtml += `${cor.html}<br>`;
-
-            const marcaModelo = formatarCampo('MARCA/MODELO', dados.marca_modelo);
-            documento += `${marcaModelo.texto}\n`;
-            documentoHtml += `${marcaModelo.html}<br>`;
-
-            const especie = formatarCampo('ESPÉCIE', dados.especie);
-            documento += `${especie.texto}\n`;
-            documentoHtml += `${especie.html}<br>`;
-
-            const proprietario = formatarCampo('PROPRIETÁRIO', dados.proprietario);
-            documento += `${proprietario.texto}\n`;
-            documentoHtml += `${proprietario.html}<br>`;
-
-            // Rodapé
-            documento += '\n' + separador + '\n\n';
-            documento += 'José Genilson Sobrinho\n';
+            documento += '\nJosé Genilson Sobrinho\n';
             documento += 'Diretor de Registro e Licenciamento - DETRAN-PI\n';
-            documento += '\n' + separador + '\n';
-            documento += `Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}\n`;
 
-            documentoHtml += '<br>' + separador + '<br><br>';
-            documentoHtml += 'José Genilson Sobrinho<br>';
-            documentoHtml += 'Diretor de Registro e Licenciamento - DETRAN-PI<br>';
-            documentoHtml += '<br>' + separador + '<br>';
-            documentoHtml += `Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+            documentoHtml += '<p><br></p>';
+            documentoHtml += '<p><strong>José Genilson Sobrinho</strong><br>Diretor de Registro e Licenciamento - DETRAN-PI</p>';
 
-            appState.documento = documento;
-            document.getElementById('previewContent').innerHTML = documentoHtml;
+            const preview = document.getElementById('previewContent');
+            if (preview) {
+                preview.innerHTML = documentoHtml;
+            }
+
+            appState.documento = documento.trim();
+            appState.documentoHtml = documentoHtml;
             salvarDados();
         }
 
         // FUNÇÃO: COPIAR PARA CLIPBOARD
-        function copiarParaClipboard() {
-            const texto = appState.documento;
-            navigator.clipboard.writeText(texto).then(() => {
-                mostrarToast('✅ Texto copiado para a área de transferência!');
-            }).catch(() => {
-                alert('Erro ao copiar. Tente novamente.');
-            });
+        async function copiarParaClipboard() {
+            const preview = document.getElementById('previewContent');
+            if (!preview) {
+                mostrarToast('⚠️ Pré-visualização não encontrada.');
+                return;
+            }
+
+            const html = String(preview.innerHTML || appState.documentoHtml || '');
+            const texto = String(preview.innerText || preview.textContent || appState.documento || '')
+                .replace(/\r\n/g, '\n')
+                .trim();
+
+            appState.documento = texto;
+            appState.documentoHtml = html;
+            salvarDados();
+
+            try {
+                if (window.ClipboardItem && navigator.clipboard && window.isSecureContext !== false) {
+                    const item = new ClipboardItem({
+                        'text/html': new Blob([html], { type: 'text/html;charset=utf-8' }),
+                        'text/plain': new Blob([texto], { type: 'text/plain;charset=utf-8' })
+                    });
+
+                    await navigator.clipboard.write([item]);
+                    mostrarToast('✅ Texto copiado com formatação!');
+                    return;
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(texto);
+                    mostrarToast('✅ Texto copiado com sucesso!');
+                    return;
+                }
+
+                throw new Error('Clipboard API indisponível');
+            } catch (error) {
+                console.warn('Falha ao copiar com Clipboard API:', error);
+
+                try {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = texto;
+                    textarea.setAttribute('readonly', '');
+                    textarea.style.position = 'fixed';
+                    textarea.style.top = '-9999px';
+                    textarea.style.left = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    const copied = document.execCommand('copy');
+                    document.body.removeChild(textarea);
+
+                    if (copied) {
+                        mostrarToast('✅ Texto copiado no modo de compatibilidade.');
+                        return;
+                    }
+
+                    throw new Error('execCommand copy falhou');
+                } catch (fallbackError) {
+                    console.error('Fallback de cópia falhou:', fallbackError);
+                    alert('Não foi possível copiar o texto no navegador atual. Tente novamente ou copie manualmente.');
+                }
+            }
         }
 
         // FUNÇÃO: BAIXAR ARQUIVO
@@ -997,9 +1054,12 @@
             appState = {
                 etapaAtual: 1,
                 tipoSelecionado: null,
-                dados: {}
+                dados: {},
+                documento: '',
+                documentoHtml: ''
             };
             localStorage.removeItem('appState');
+            document.getElementById('previewContent').innerHTML = '';
             irParaEtapa(1);
             renderizarTipos();
         }
@@ -1014,6 +1074,12 @@
             if (salvo) {
                 appState = JSON.parse(salvo);
                 renderizarTipos();
+                if (appState.etapaAtual === 3 && appState.documentoHtml) {
+                    const preview = document.getElementById('previewContent');
+                    if (preview) {
+                        preview.innerHTML = appState.documentoHtml;
+                    }
+                }
             }
         }
 
