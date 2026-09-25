@@ -890,16 +890,10 @@
             documentoHtml += `<p>${escapeHtml(introducao[0])}</p>`;
             documentoHtml += `<p>${escapeHtml(introducao[1])}</p>`;
 
-            documentoHtml += '<table style="border-collapse: collapse; width: 100%; max-width: 700px; font-family: Arial, sans-serif;">';
             campos.forEach(([label, valor]) => {
                 documento += `${label}: ${valor}\n`;
-                documentoHtml += `
-                    <tr>
-                        <td style="padding: 4px 10px 4px 0; font-weight: bold; white-space: nowrap; vertical-align: top;">${escapeHtml(label)}:</td>
-                        <td style="padding: 4px 0; vertical-align: top;">${escapeHtml(valor)}</td>
-                    </tr>`;
+                documentoHtml += `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(valor)}</p>`;
             });
-            documentoHtml += '</table>';
             documento += '\n';
 
             documento += '\nJosé Genilson Sobrinho\n';
